@@ -1,0 +1,48 @@
+name: "Infra Deploy"
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/github-actions-terraform-role
+          aws-region: ap-northeast-1
+
+      # Terraform apply
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init
+        working-directory: infra
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve
+        working-directory: infra
+
+      - name: Get bucket name
+        id: tf-output
+        run: |
+          BUCKET=$(terraform output -raw bucket_name)
+          echo "bucket_name=$BUCKET" >> $GITHUB_OUTPUT
+        working-directory: infra
+
+      # index.htmlアップロード（ここ）
+      - name: Upload to S3
+        run: |
+          aws s3 cp index.html s3://${{ steps.tf-output.outputs.bucket_name }}/index.html

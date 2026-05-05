@@ -1,0 +1,89 @@
+# ---------------------------------------
+# Infra PR Check (Terraform CI)
+# ---------------------------------------
+name: "Infra PR Check"
+
+on:
+  # PRがmainブランチ向けに作成されたときに実行
+  pull_request:
+    branches:
+      - main
+    paths:
+      # インフラコード or workflow変更時のみ実行
+      - "infra/**"
+      - ".github/workflows/**"
+
+# OIDCでAWSに接続するための権限
+permissions:
+  id-token: write   # OIDCトークン取得に必須
+  contents: read    # リポジトリ読み取り
+
+jobs:
+  # ---------------------------------------
+  # Branch naming rule validation
+  # ---------------------------------------
+  check-branch-name:
+    name: "Check branch name"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Validate branch name"
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+
+          # 命名規則:
+          # feature/<issue>-<title>
+          # fix/<issue>-<title>
+          # docs/<issue>-<title>
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|fix|docs)/[0-9]+-[a-z0-9-]+$ ]]; then
+            echo "Invalid branch name: $BRANCH_NAME"
+            echo "Expected: feature/12-add-ci-workflow"
+            exit 1
+          fi
+
+  # ---------------------------------------
+  # Terraform preview (plan)
+  # ---------------------------------------
+  terraform-preview:
+    name: "Terraform Preview"
+    runs-on: ubuntu-latest
+
+    # ブランチ名チェックが成功した場合のみ実行
+    needs: check-branch-name
+
+    # Terraformコードのディレクトリ
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      # リポジトリ取得
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      # AWS認証（OIDCで一時クレデンシャル取得）
+      - name: "Configure AWS credentials"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/github-actions-terraform-role
+          aws-region: ap-northeast-1
+
+      # Terraformインストール
+      - name: "Setup Terraform"
+        uses: hashicorp/setup-terraform@v3
+
+      # 初期化（provider / backend）
+      - name: "Terraform init"
+        run: terraform init
+
+      # フォーマットチェック
+      - name: "Terraform fmt check"
+        run: terraform fmt -check
+
+      # 構文チェック
+      - name: "Terraform validate"
+        run: terraform validate
+
+      # 差分確認（ここがCIのコア）
+      - name: "Terraform plan"
+        run: terraform plan
