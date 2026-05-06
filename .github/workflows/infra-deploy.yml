@@ -17,6 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # AWSアカウントを動的に取得
+      - name: Get AWS Account ID
+        id: aws-account
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+
+      # AWS認証（OIDCで一時クレデンシャル取得）
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
