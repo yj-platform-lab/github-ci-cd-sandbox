@@ -61,6 +61,7 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
 
+      # AWSアカウントを動的に取得
       - name: Get AWS Account ID
         id: aws-account
         run: |
