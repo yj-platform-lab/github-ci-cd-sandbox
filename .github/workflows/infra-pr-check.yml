@@ -72,9 +72,20 @@ jobs:
       - name: "Setup Terraform"
         uses: hashicorp/setup-terraform@v3
 
+      # backend.hclはpublic repositoryに配置せず、GitHub Actions実行時に生成する
+      - name: "Create backend.hcl"
+        run: |
+          cat <<EOF > backend.hcl
+          bucket       = "${{ vars.TFSTATE_BUCKET }}"
+          key          = "dev/terraform.tfstate"
+          region       = "ap-northeast-1"
+          encrypt      = true
+          use_lockfile = true
+          EOF
+
       # 初期化（provider / backend）
       - name: "Terraform init"
-        run: terraform init
+        run: terraform init -backend-config=backend.hcl
 
       # フォーマットチェック
       - name: "Terraform fmt check"
