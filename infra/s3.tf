@@ -27,7 +27,7 @@ resource "aws_s3_bucket_policy" "actions_web_bucket" {
   bucket = aws_s3_bucket.actions_web_bucket.id
   policy = data.aws_iam_policy_document.actions_web_bucket.json
 
-# # Public Access Blockを先に設定しないとBucket PolicyがAWS側で拒否されるため順序を明示
+  # # Public Access Blockを先に設定しないとBucket PolicyがAWS側で拒否されるため順序を明示
   depends_on = [
     aws_s3_bucket_public_access_block.actions_web_bucket
   ]
