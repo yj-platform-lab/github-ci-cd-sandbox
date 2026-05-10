@@ -8,10 +8,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      # インフラコード or workflow変更時のみ実行
-      - "infra/**"
-      - ".github/workflows/**"
 
 # OIDCでAWSに接続するための権限
 permissions:
