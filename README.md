@@ -92,43 +92,38 @@ Operation FlowとActual Operationから導出した要件は以下とする。
 
 ![image6.png](./images/image6.png)
 
-①はBootstrap用IAMリソースである。
-
+①はBootstrap用IAMリソースである。  
 OIDC Provider / IAM RoleはGitHub Actions実行前に存在している必要がある。そのため、github-ci-cd-sandbox側で管理すると「GitHub Actionsで認証するためのIAMをGitHub Actionsで作成する」という鶏卵問題が発生する。このため、認証基盤はprivate repositoryであるgithub-platform-iac側で事前作成する構成とした。
 
----
+<br>
 
 ②ではGitHub Actions用OIDC Providerを作成している。
-OIDC Providerでは、GitHubが提供するIssuer URLとAWS STSをAudienceとして設定する。またTrust Policyでは、github-ci-cd-sandbox repositoryから発行されたTokenのみ許可している。Permission Policyでは、GitHub Actionsが実行可能なAWS操作を必要最小限に制限している。なお、2026/5/5時点ではthumbprint設定は不要となっている。
+OIDC Providerでは、GitHubが提供するIssuer URLとAWS STSをAudienceとして設定する。またTrust Policyでは、github-ci-cd-sandbox repositoryから発行されたTokenのみ許可している。Permission Policyでは、GitHub Actionsが実行可能なAWS操作を必要最小限に制限している。なお、2026/5/5時点ではthumbprint設定は不要となっている。  
+参考：https://github.com/aws-actions/configure-aws-credentials/tree/main
 
-```
-https://github.com/aws-actions/configure-aws-credentials/tree/main
-```
+<br>
 
----
+③のvariables.tfでは、Terraform backend設定をGitHub Actions Variablesとして管理している。  
+backend.hclをpublic repositoryへ直接配置したくないためである。
 
-③のvariables.tfでは、Terraform backend設定をGitHub Actions Variablesとして管理している。backend.hclをpublic repositoryへ直接配置したくないためである。
+<br>
 
----
-
-④のbranch_protection.tfでは、github-ci-cd-sandbox repositoryへブランチ保護を適用している。
+④のbranch_protection.tfでは、github-ci-cd-sandbox repositoryへブランチ保護を適用している。  
 enforce_admins = trueにより、管理者を含めたmain branchへの直接pushを禁止している。
 本来はPull Request必須 + Human Review必須としたいが、現時点では単一ユーザ運用のため required_approving_review_count = 0 としている。
 
----
+<br>
 
-⑤はCI/CD用GitHub Actions workflowである。
+⑤はCI/CD用GitHub Actions workflowである。  
 infra-pr-check.ymlでは、branch name checkで命名規則確認を行う。Terraform Previewでは terraform init / fmt / validate / plan を実行し、Terraform適用前に構文・差分確認を行う。infra-deploy.ymlはCD用workflowであり、main branchへのmergeを契機として実行される。
 
----
+<br>
 
-⑥はTerraformで構築するS3 Static Website用リソースである。
+⑥はTerraformで構築するS3 Static Website用リソースである。  
 今回はCI/CD動作確認を目的としているため、index.htmlは最小構成としている。
 
 ## Summary
 
-今回の検証では、TerraformやGitHub Actions単体ではなく、PR運用・認証・レビュー・権限制御まで含めたCI/CD運用全体を設計対象とした。
+今回の検証では、TerraformやGitHub Actions単体ではなく、PR運用・認証・レビュー・権限制御まで含めたCI/CD運用全体を設計対象とした。  
 特に、OIDC認証のBootstrap問題やBranch Protection / Required Checksなど、実際に運用を成立させるための周辺設計で多くの学びがあった。
 また、運用フローを先に定義し、そこから必要要件を逆算することで、GitHub運用・認証・CI/CDを一貫した構成として整理できた。
-
-##
